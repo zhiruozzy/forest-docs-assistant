@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>林业公文智能助手</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: "Microsoft YaHei", SimSun, sans-serif;
+            background: #f0f9ff;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        h1 {
+            text-align: center;
+            color: #189066;
+            margin-bottom: 25px;
+            font-size: 28px;
+        }
+        label {
+            display: block;
+            margin: 15px 0 8px;
+            font-weight: bold;
+            color: #189066;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d9d9d9;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        textarea { min-height: 150px; resize: vertical; }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 15px 0;
+        }
+        .btn {
+            padding: 8px 12px;
+            background: #e6f7ff;
+            border: none;
+            border-radius: 4px;
+            color: #189066;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button#generateBtn {
+            width: 100%;
+            padding: 14px;
+            background: #189066;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 18px;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+        #result {
+            margin-top: 30px;
+            display: none;
+        }
+        #content {
+            background: #fafafa;
+            padding: 20px;
+            border-radius: 6px;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            font-size: 16px;
+        }
+        #downloadBtn {
+            margin-top: 20px;
+            padding: 12px;
+            background: #52c41a;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            width: 100%;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>林业公文智能助手</h1>
+        
+        <label for="topic">公文主题</label>
+        <input type="text" id="topic" placeholder="例如：湿地保护方案、野生动物救助通知">
+
+        <label for="prompt">详细要求（可选）</label>
+        <textarea id="prompt" placeholder="如：包含背景、措施、分工、时间，语言正式，800字左右"></textarea>
+
+        <div class="btn-group">
+            <button class="btn" onclick="setTemplate('湿地保护方案')">湿地保护方案</button>
+            <button class="btn" onclick="setTemplate('野生动物栖息地修复计划')">野生动物栖息地修复计划</button>
+            <button class="btn" onclick="setTemplate('林业火灾应急预案')">林业火灾应急预案</button>
+            <button class="btn" onclick="setTemplate('珍稀植物保护通知')">珍稀植物保护通知</button>
+        </div>
+
+        <button id="generateBtn" onclick="generate()">生成公文</button>
+
+        <div id="result">
+            <h2 style="margin:20px 0;">生成结果</h2>
+            <div id="content"></div>
+            <button id="downloadBtn" onclick="downloadWord()">导出为 Word 文档</button>
+        </div>
+    </div>
+
+    <script>
+        function setTemplate(text) {
+            document.getElementById('topic').value = text;
+            let p = '';
+            if (text === '湿地保护方案') p = '请以林业局公文格式撰写《关于加强XX湿地生态监测的通知》，要求包含：背景分析、具体措施、责任分工、时间节点，语言正式严谨，字数800字左右。';
+            else if (text === '野生动物栖息地修复计划') p = '请以林业局公文格式撰写《XX区域野生动物栖息地修复计划》，要求包含：现状分析、修复目标、实施步骤、保障措施，语言正式严谨，字数800字左右。';
+            else if (text === '林业火灾应急预案') p = '请以林业局公文格式撰写《林业火灾应急预案》，要求包含：应急组织体系、预警机制、处置流程、物资保障，语言正式严谨，字数800字左右。';
+            else if (text === '珍稀植物保护通知') p = '请以林业局公文格式撰写《关于加强珍稀植物保护的通知》，要求包含：保护现状、重点措施、责任单位、实施时间，语言正式严谨，字数800字左右。';
+            document.getElementById('prompt').value = p;
+        }
+
+        async function generate() {
+            const topic = document.getElementById('topic').value.trim();
+            const prompt = document.getElementById('prompt').value.trim();
+            if (!topic) { alert('请输入公文主题'); return; }
+
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = true;
+            btn.textContent = '生成中...';
+
+            try {
+                const res = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ topic, prompt })
+                });
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+
+                document.getElementById('content').textContent = data.content;
+                document.getElementById('result').style.display = 'block';
+            } catch (err) {
+                alert('生成失败：' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '生成公文';
+            }
+        }
+
+        function downloadWord() {
+            const content = document.getElementById('content').textContent;
+            const title = document.getElementById('topic').value || '林业公文';
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${title}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
